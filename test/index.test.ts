@@ -22,11 +22,6 @@ suite("isRegexTemplate()", () => {
 });
 
 suite("templates", () => {
-  test("tpl: concatenates patterns without adding syntax", () => {
-    const regex = r$.tpl("A", r$.raw("B.C"));
-    assert.strictEqual(regex.toString(), "A\\x42\\.C");
-  });
-
   test("RegExp: flags i", () => {
     const regex = r$.or(/foo/i, "bar")();
     assert.strictEqual(regex.source, "(?i:foo)|bar");
@@ -86,6 +81,7 @@ suite("templates", () => {
       message: "RegExp flag \"u\" must be passed when compiling the composed pattern",
     });
   });
+
   test("RegExp: flags v (required)", () => {
     assert.throws(() => r$.tpl(/[a-z]/v)(), {
       name: "TypeError",
@@ -93,23 +89,68 @@ suite("templates", () => {
     });
   });
 
-  test("or: A|B", () => {
-    const regex = r$.or("A", "B");
-    assert.strictEqual(regex.toString(), "A|B");
-  });
-  test("or: A|B|C", () => {
-    const regex = r$.or("A", "B", "C");
-    assert.strictEqual(regex.toString(), "A|B|C");
+  test("var(some): <some>", () => {
+    const one = new RegexDesigner().set("some", "A");
+    const regex = one.var("some");
+    assert.strictEqual(regex.toString(), "A");
+    assert.strictEqual(one.or(one.var("some"), one.var("some")).toString(), "A|A");
   });
 
-  test("named: (?<name>A)", () => {
-    const regex = r$.named("name", "A");
-    assert.strictEqual(regex.toString(), "(?<name>A)");
+  test("var: detects circular dependencies", () => {
+    const direct = new RegexDesigner();
+    direct.set("a", direct.var("a"));
+    assert.throws(() => direct.var("a").toString(), {
+      message: "Circular variable dependency: a -> a",
+    });
+
+    const indirect = new RegexDesigner();
+    indirect.set("a", indirect.var("b"));
+    indirect.set("b", indirect.var("c"));
+    indirect.set("c", indirect.var("a"));
+    assert.throws(() => indirect.var("a").toString(), {
+      message: "Circular variable dependency: a -> b -> c -> a",
+    });
   });
-  test("named: (?<name>AB)", () => {
-    const regex = r$.named("name", "A", "B");
-    assert.strictEqual(regex.toString(), "(?<name>AB)");
+
+  test("var: keep variables isolated between builders", () => {
+    const one = new RegexDesigner()
+      .set("some", "A");
+    const other = new RegexDesigner()
+      .set("some", "B");
+    ;
+    assert.strictEqual(one.var("some").toString(), "A");
+    assert.strictEqual(other.var("some").toString(), "B");
   });
+
+  test("tpl: concatenates patterns without adding syntax", () => {
+    const regex = r$.tpl("A", r$.raw("B.C"));
+    assert.strictEqual(regex.toString(), "A\\x42\\.C");
+  });
+
+  test("raw: escapes literal string content", () => {
+    const regex = r$.raw("a.b", "*");
+    assert.strictEqual(regex.toString(), RegExp.escape("a.b*"));
+  });
+
+  test("start, end, and whole: anchor non-capturing patterns", () => {
+    const start = r$.start(r$.or("A", "B"));
+    const end = r$.end(r$.or("A", "B"));
+    const whole = r$.whole(r$.or("A", "B"));
+
+    assert.strictEqual(start.toString(), "^(?:A|B)");
+    assert.strictEqual(end.toString(), "(?:A|B)$");
+    assert.strictEqual(whole.toString(), "^(?:A|B)$");
+    assert.strictEqual(start().test("B!"), true);
+    assert.strictEqual(start().test("!B"), false);
+    assert.strictEqual(end().test("!B"), true);
+    assert.strictEqual(end().test("B!"), false);
+    assert.strictEqual(whole().test("B"), true);
+    assert.strictEqual(whole().test("!B"), false);
+    assert.strictEqual(r$.start("A")("m").test("x\nA"), true);
+    assert.strictEqual(r$.end("A")("m").test("A\nx"), true);
+    assert.strictEqual(r$.whole("A")("m").test("x\nA"), true);
+  });
+
   test("group: (?<name>A)", () => {
     const regex = r$.group({ name: "name" }, "A");
     assert.strictEqual(regex.toString(), "(?<name>A)");
@@ -145,54 +186,13 @@ suite("templates", () => {
     });
   });
 
-  test("opt: (?:A)?", () => {
-    const regex = r$.opt("A");
-    assert.strictEqual(regex.toString(), "(?:A)?");
+  test("named: (?<name>A)", () => {
+    const regex = r$.named("name", "A");
+    assert.strictEqual(regex.toString(), "(?<name>A)");
   });
-  test("opt: (?:AB)?", () => {
-    const regex = r$.opt("A", "B");
-    assert.strictEqual(regex.toString(), "(?:AB)?");
-  });
-
-  test("raw: escapes literal string content", () => {
-    const regex = r$.raw("a.b", "*");
-    assert.strictEqual(regex.toString(), RegExp.escape("a.b*"));
-  });
-
-  test("ahead: (?=AB) (pos)", () => {
-    const regex = r$.ahead_pos("A", "B");
-    assert.strictEqual(regex.toString(), "(?=AB)");
-  });
-  test("ahead: (?=AB) (true)", () => {
-    const regex = r$.ahead(true, "A", "B");
-    assert.strictEqual(regex.toString(), "(?=AB)");
-  });
-
-  test("ahead: (?!AB) (neg)", () => {
-    const regex = r$.ahead_neg("A", "B");
-    assert.strictEqual(regex.toString(), "(?!AB)");
-  });
-  test("ahead: (?!AB) (false)", () => {
-    const regex = r$.ahead(false, "A", "B");
-    assert.strictEqual(regex.toString(), "(?!AB)");
-  });
-
-  test("behind: (?<=AB) (pos)", () => {
-    const regex = r$.behind_pos("A", "B");
-    assert.strictEqual(regex.toString(), "(?<=AB)");
-  });
-  test("behind: (?<=AB) (true)", () => {
-    const regex = r$.behind(true, "A", "B");
-    assert.strictEqual(regex.toString(), "(?<=AB)");
-  });
-
-  test("behind: (?<!AB) (neg)", () => {
-    const regex = r$.behind_neg("A", "B");
-    assert.strictEqual(regex.toString(), "(?<!AB)");
-  });
-  test("behind: (?<!AB) (false)", () => {
-    const regex = r$.behind(false, "A", "B");
-    assert.strictEqual(regex.toString(), "(?<!AB)");
+  test("named: (?<name>AB)", () => {
+    const regex = r$.named("name", "A", "B");
+    assert.strictEqual(regex.toString(), "(?<name>AB)");
   });
 
   test("ref: \\1", () => {
@@ -202,6 +202,15 @@ suite("templates", () => {
   test("ref: a (\\k<some>)", () => {
     const regex = r$.ref("some");
     assert.strictEqual(regex.toString(), "\\k<some>");
+  });
+
+  test("opt: (?:A)?", () => {
+    const regex = r$.opt("A");
+    assert.strictEqual(regex.toString(), "(?:A)?");
+  });
+  test("opt: (?:AB)?", () => {
+    const regex = r$.opt("A", "B");
+    assert.strictEqual(regex.toString(), "(?:AB)?");
   });
 
   test("qty: a{3}", () => {
@@ -224,8 +233,6 @@ suite("templates", () => {
     const regex = r$.qty([5, 6], "A", "B");
     assert.strictEqual(regex.toString(), "(?:AB){5,6}");
   });
-
-
   test("qty: a{7} (object)", () => {
     const regex = r$.qty({ exact: 7 }, "A", "B");
     assert.strictEqual(regex.toString(), "(?:AB){7}");
@@ -281,36 +288,46 @@ suite("templates", () => {
     });
   });
 
-  test("var(some): <some>", () => {
-    const one = new RegexDesigner().set("some", "A");
-    const regex = one.var("some");
-    assert.strictEqual(regex.toString(), "A");
-    assert.strictEqual(one.or(one.var("some"), one.var("some")).toString(), "A|A");
+  test("or: A|B", () => {
+    const regex = r$.or("A", "B");
+    assert.strictEqual(regex.toString(), "A|B");
+  });
+  test("or: A|B|C", () => {
+    const regex = r$.or("A", "B", "C");
+    assert.strictEqual(regex.toString(), "A|B|C");
   });
 
-  test("var: detects circular dependencies", () => {
-    const direct = new RegexDesigner();
-    direct.set("a", direct.var("a"));
-    assert.throws(() => direct.var("a").toString(), {
-      message: "Circular variable dependency: a -> a",
-    });
-
-    const indirect = new RegexDesigner();
-    indirect.set("a", indirect.var("b"));
-    indirect.set("b", indirect.var("c"));
-    indirect.set("c", indirect.var("a"));
-    assert.throws(() => indirect.var("a").toString(), {
-      message: "Circular variable dependency: a -> b -> c -> a",
-    });
+  test("ahead: (?=AB) (pos)", () => {
+    const regex = r$.ahead_pos("A", "B");
+    assert.strictEqual(regex.toString(), "(?=AB)");
+  });
+  test("ahead: (?=AB) (true)", () => {
+    const regex = r$.ahead(true, "A", "B");
+    assert.strictEqual(regex.toString(), "(?=AB)");
+  });
+  test("ahead: (?!AB) (neg)", () => {
+    const regex = r$.ahead_neg("A", "B");
+    assert.strictEqual(regex.toString(), "(?!AB)");
+  });
+  test("ahead: (?!AB) (false)", () => {
+    const regex = r$.ahead(false, "A", "B");
+    assert.strictEqual(regex.toString(), "(?!AB)");
   });
 
-  test("var: keep variables isolated between builders", () => {
-    const one = new RegexDesigner()
-      .set("some", "A");
-    const other = new RegexDesigner()
-      .set("some", "B");
-    ;
-    assert.strictEqual(one.var("some").toString(), "A");
-    assert.strictEqual(other.var("some").toString(), "B");
+  test("behind: (?<=AB) (pos)", () => {
+    const regex = r$.behind_pos("A", "B");
+    assert.strictEqual(regex.toString(), "(?<=AB)");
+  });
+  test("behind: (?<=AB) (true)", () => {
+    const regex = r$.behind(true, "A", "B");
+    assert.strictEqual(regex.toString(), "(?<=AB)");
+  });
+  test("behind: (?<!AB) (neg)", () => {
+    const regex = r$.behind_neg("A", "B");
+    assert.strictEqual(regex.toString(), "(?<!AB)");
+  });
+  test("behind: (?<!AB) (false)", () => {
+    const regex = r$.behind(false, "A", "B");
+    assert.strictEqual(regex.toString(), "(?<!AB)");
   });
 });

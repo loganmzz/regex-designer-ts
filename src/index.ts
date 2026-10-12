@@ -83,6 +83,10 @@ function group(options: GroupOptions, ...patterns: RegexValue[]): RegexTemplate 
   });
 }
 
+function anchor(start: boolean, end: boolean, patterns: RegexValue[]): RegexTemplate {
+  return template((flags, compiling) => `${start ? "^" : ""}${patternString(group(false, ...patterns), flags, compiling)}${end ? "$" : ""}`);
+}
+
 function named(name: string, ...patterns: RegexValue[]): RegexTemplate {
   return group({ name }, ...patterns);
 }
@@ -131,14 +135,65 @@ export class RegexDesigner {
   private readonly variables = new Map<string, RegexValue>();
   private readonly resolvingVariables: string[] = [];
 
+  /** Define or replace a lazy pattern variable on this designer. */
+  set(name: string, ...patterns: RegexValue[]): this {
+    this.variables.set(name, tpl(...patterns));
+    return this;
+  }
+
+  /** Reference a variable, resolving it when this template is rendered. */
+  var(name: string): RegexTemplate {
+    return template((flags, compiling) => this.resolveVariable(name, flags, compiling));
+  }
+
+  private resolveVariable(name: string, flags: string | undefined, compiling: boolean): string {
+    const cycleStart = this.resolvingVariables.indexOf(name);
+    if (cycleStart !== -1) {
+      const cycle = [...this.resolvingVariables.slice(cycleStart), name];
+      throw new Error(`Circular variable dependency: ${cycle.join(" -> ")}`);
+    }
+
+    const pattern = this.variables.get(name);
+    if (pattern === undefined) {
+      throw new Error(`Variable "${name}" is not set`);
+    }
+
+    this.resolvingVariables.push(name);
+    try {
+      return patternString(pattern, flags, compiling);
+    } finally {
+      this.resolvingVariables.pop();
+    }
+  }
+
   /** Concatenate patterns without adding groups or escaping. */
   tpl(...patterns: RegexValue[]): RegexTemplate {
     return tpl(...patterns);
   }
 
-  /** Join patterns with alternation without adding groups. */
-  or(...patterns: RegexValue[]): RegexTemplate {
-    return or(...patterns);
+  /** Escape literal text for use in a regex pattern. */
+  raw(...patterns: string[]): RegexTemplate {
+    return raw(...patterns);
+  }
+
+  /** Match the concatenated patterns at the start of the input. */
+  start(...patterns: RegexValue[]): RegexTemplate {
+    return anchor(true, false, patterns);
+  }
+
+  /** Match the concatenated patterns at the end of the input. */
+  end(...patterns: RegexValue[]): RegexTemplate {
+    return anchor(false, true, patterns);
+  }
+
+  /** Match the concatenated patterns across the whole input. */
+  whole(...patterns: RegexValue[]): RegexTemplate {
+    return anchor(true, true, patterns);
+  }
+
+  /** Group patterns, optionally capturing them or assigning a capture name. */
+  group(options: GroupOptions, ...patterns: RegexValue[]): RegexTemplate {
+    return group(options, ...patterns);
   }
 
   /** Create a named capturing group around the concatenated patterns. */
@@ -146,9 +201,9 @@ export class RegexDesigner {
     return named(name, ...patterns);
   }
 
-  /** Group patterns, optionally capturing them or assigning a capture name. */
-  group(options: GroupOptions, ...patterns: RegexValue[]): RegexTemplate {
-    return group(options, ...patterns);
+  /** Create a numeric or named backreference. */
+  ref(reference: number | string): RegexTemplate {
+    return template(() => typeof reference === "number" ? `\\${reference}` : `\\k<${reference}>`);
   }
 
   /** Make the concatenated patterns optional using a non-capturing group. */
@@ -161,9 +216,9 @@ export class RegexDesigner {
     return qty(quantity, ...patterns);
   }
 
-  /** Escape literal text for use in a regex pattern. */
-  raw(...patterns: string[]): RegexTemplate {
-    return raw(...patterns);
+  /** Join patterns with alternation without adding groups. */
+  or(...patterns: RegexValue[]): RegexTemplate {
+    return or(...patterns);
   }
 
   /** Create a positive or negative lookahead assertion. */
@@ -196,41 +251,6 @@ export class RegexDesigner {
     return look("?<", false, patterns);
   }
 
-  /** Create a numeric or named backreference. */
-  ref(reference: number | string): RegexTemplate {
-    return template(() => typeof reference === "number" ? `\\${reference}` : `\\k<${reference}>`);
-  }
-
-  /** Define or replace a lazy pattern variable on this designer. */
-  set(name: string, ...patterns: RegexValue[]): this {
-    this.variables.set(name, tpl(...patterns));
-    return this;
-  }
-
-  private resolveVariable(name: string, flags: string | undefined, compiling: boolean): string {
-    const cycleStart = this.resolvingVariables.indexOf(name);
-    if (cycleStart !== -1) {
-      const cycle = [...this.resolvingVariables.slice(cycleStart), name];
-      throw new Error(`Circular variable dependency: ${cycle.join(" -> ")}`);
-    }
-
-    const pattern = this.variables.get(name);
-    if (pattern === undefined) {
-      throw new Error(`Variable "${name}" is not set`);
-    }
-
-    this.resolvingVariables.push(name);
-    try {
-      return patternString(pattern, flags, compiling);
-    } finally {
-      this.resolvingVariables.pop();
-    }
-  }
-
-  /** Reference a variable, resolving it when this template is rendered. */
-  var(name: string): RegexTemplate {
-    return template((flags, compiling) => this.resolveVariable(name, flags, compiling));
-  }
 }
 
 /** Create a new regex designer with its own variable scope. */
