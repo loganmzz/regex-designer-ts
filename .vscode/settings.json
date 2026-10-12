@@ -1,4 +1,9 @@
 {
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+  "files.trimTrailingWhitespace": true,
+  "js/ts.tsdk.promptToUseWorkspaceVersion": true,
+  "js/ts.tsdk.path": "node_modules/typescript/lib",
   "chat.tools.terminal.autoApprove": {
     "/^node --test test/composed-regex\\.test\\.ts$/": {
       "approve": true,
