@@ -46,6 +46,13 @@ this repository. See [README.md](README.md) for the public API and usage example
   API examples or behavior change. Keep examples executable.
 - Do not edit generated `dist/` output; rebuild it from TypeScript.
 
+## Git
+
+- Use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) for commit messages: `type(scope)!: description`. The scope and `!` are optional.
+- Use `feat` for user-facing features and `fix` for bug fixes. Other useful types include `docs`, `test`, `refactor`, `build`, `ci`, and `chore`.
+- Mark breaking changes with `!` after the type or scope, and describe the change in the commit body. A `BREAKING CHANGE:` footer may be used when more detail is needed.
+- Keep the description concise and imperative; do not end it with a period.
+
 ## Validation
 
 - Use Node.js 24 or newer; [mise.toml](mise.toml) pins the development version.

@@ -10,7 +10,7 @@ export interface RegexTemplate {
 
 /** Check whether a value is a regex template. */
 export function isRegexTemplate(value: unknown): value is RegexTemplate {
-  return typeof value === 'function' && 'render' in value && typeof value.render === 'function';
+  return typeof value === "function" && "render" in value && typeof value.render === "function";
 }
 
 /**
@@ -40,13 +40,13 @@ export type QuantityOptions = number | [min: number, max?: number] | QuantityNam
 
 function patternString(pattern: RegexValue, flags: string | undefined, compiling: boolean): string {
   if (pattern instanceof RegExp) {
-    const unicodeFlag = pattern.flags.includes('v') ? 'v' : pattern.flags.includes('u') ? 'u' : undefined;
+    const unicodeFlag = pattern.flags.includes("v") ? "v" : pattern.flags.includes("u") ? "u" : undefined;
     if (compiling && unicodeFlag !== undefined && !flags?.includes(unicodeFlag)) {
       throw new TypeError(`RegExp flag "${unicodeFlag}" must be passed when compiling the composed pattern`);
     }
 
-    const scopedFlags = pattern.flags.replace(/[dgyuv]/g, '');
-    return scopedFlags === '' ? pattern.source : `(?${scopedFlags}:${pattern.source})`;
+    const scopedFlags = pattern.flags.replace(/[dgyuv]/g, "");
+    return scopedFlags === "" ? pattern.source : `(?${scopedFlags}:${pattern.source})`;
   }
 
   if (isRegexTemplate(pattern)) {
@@ -63,23 +63,23 @@ function template(render: (flags: string | undefined, compiling: boolean) => str
 }
 
 function tpl(...patterns: RegexValue[]): RegexTemplate {
-  return template((flags, compiling) => patterns.map(pattern => patternString(pattern, flags, compiling)).join(''));
+  return template((flags, compiling) => patterns.map(pattern => patternString(pattern, flags, compiling)).join(""));
 }
 
 function or(...patterns: RegexValue[]): RegexTemplate {
-  return template((flags, compiling) => patterns.map(pattern => patternString(pattern, flags, compiling)).join('|'));
+  return template((flags, compiling) => patterns.map(pattern => patternString(pattern, flags, compiling)).join("|"));
 }
 
 function group(options: GroupOptions, ...patterns: RegexValue[]): RegexTemplate {
-  if (typeof options !== 'boolean' && options.name !== undefined && options.capture !== undefined) {
-    throw new TypeError('Group options "name" and "capture" are mutually exclusive');
+  if (typeof options !== "boolean" && options.name !== undefined && options.capture !== undefined) {
+    throw new TypeError("Group options \"name\" and \"capture\" are mutually exclusive");
   }
 
   return template((flags, compiling) => {
-    const name = typeof options === 'boolean' ? undefined : options.name;
-    const capture = typeof options === 'boolean' ? options : options.capture ?? true;
-    const prefix = name !== undefined ? `?<${name}>` : capture ? '' : '?:';
-    return `(${prefix}${patterns.map(pattern => patternString(pattern, flags, compiling)).join('')})`;
+    const name = typeof options === "boolean" ? undefined : options.name;
+    const capture = typeof options === "boolean" ? options : options.capture ?? true;
+    const prefix = name !== undefined ? `?<${name}>` : capture ? "" : "?:";
+    return `(${prefix}${patterns.map(pattern => patternString(pattern, flags, compiling)).join("")})`;
   });
 }
 
@@ -96,12 +96,12 @@ function qty(quantity: QuantityOptions, ...patterns: RegexValue[]): RegexTemplat
   let max: number | undefined;
   let greedy = true;
 
-  if (typeof quantity === 'number') {
+  if (typeof quantity === "number") {
     min = quantity;
     max = quantity;
   } else if (Array.isArray(quantity)) {
     [min, max] = quantity;
-  } else if ('exact' in quantity) {
+  } else if ("exact" in quantity) {
     min = quantity.exact;
     max = quantity.exact;
     greedy = quantity.greedy ?? true;
@@ -112,18 +112,18 @@ function qty(quantity: QuantityOptions, ...patterns: RegexValue[]): RegexTemplat
   }
 
   if (!Number.isInteger(min) || min < 0 || (max !== undefined && max !== Infinity && (!Number.isInteger(max) || max < min))) {
-    throw new RangeError('Quantity bounds must be non-negative integers with max >= min');
+    throw new RangeError("Quantity bounds must be non-negative integers with max >= min");
   }
 
-  return template((flags, compiling) => `${patternString(group(false, ...patterns), flags, compiling)}{${min}${max === undefined || max === Infinity ? ',' : max === min ? '' : `,${max}`}}${greedy ? '' : '?'}`);
+  return template((flags, compiling) => `${patternString(group(false, ...patterns), flags, compiling)}{${min}${max === undefined || max === Infinity ? "," : max === min ? "" : `,${max}`}}${greedy ? "" : "?"}`);
 }
 
 function look(prefix: string, positive: boolean, patterns: RegexValue[]): RegexTemplate {
-  return template((flags, compiling) => `(${prefix}${positive ? '=' : '!'}${patterns.map(pattern => patternString(pattern, flags, compiling)).join('')})`);
+  return template((flags, compiling) => `(${prefix}${positive ? "=" : "!"}${patterns.map(pattern => patternString(pattern, flags, compiling)).join("")})`);
 }
 
 function raw(...patterns: string[]): RegexTemplate {
-  return template(() => patterns.map(p => RegExp.escape(p)).join(''));
+  return template(() => patterns.map(p => RegExp.escape(p)).join(""));
 }
 
 /** Compose lazy regex templates and resolve reusable variables in an isolated scope. */
@@ -168,37 +168,37 @@ export class RegexDesigner {
 
   /** Create a positive or negative lookahead assertion. */
   ahead(positive: boolean, ...patterns: RegexValue[]): RegexTemplate {
-    return look('?', positive, patterns);
+    return look("?", positive, patterns);
   }
 
   /** Create a positive lookahead assertion. */
   ahead_pos(...patterns: RegexValue[]): RegexTemplate {
-    return look('?', true, patterns);
+    return look("?", true, patterns);
   }
 
   /** Create a negative lookahead assertion. */
   ahead_neg(...patterns: RegexValue[]): RegexTemplate {
-    return look('?', false, patterns);
+    return look("?", false, patterns);
   }
 
   /** Create a positive or negative lookbehind assertion. */
   behind(positive: boolean, ...patterns: RegexValue[]): RegexTemplate {
-    return look('?<', positive, patterns);
+    return look("?<", positive, patterns);
   }
 
   /** Create a positive lookbehind assertion. */
   behind_pos(...patterns: RegexValue[]): RegexTemplate {
-    return look('?<', true, patterns);
+    return look("?<", true, patterns);
   }
 
   /** Create a negative lookbehind assertion. */
   behind_neg(...patterns: RegexValue[]): RegexTemplate {
-    return look('?<', false, patterns);
+    return look("?<", false, patterns);
   }
 
   /** Create a numeric or named backreference. */
   ref(reference: number | string): RegexTemplate {
-    return template(() => typeof reference === 'number' ? `\\${reference}` : `\\k<${reference}>`);
+    return template(() => typeof reference === "number" ? `\\${reference}` : `\\k<${reference}>`);
   }
 
   /** Define or replace a lazy pattern variable on this designer. */
@@ -211,7 +211,7 @@ export class RegexDesigner {
     const cycleStart = this.resolvingVariables.indexOf(name);
     if (cycleStart !== -1) {
       const cycle = [...this.resolvingVariables.slice(cycleStart), name];
-      throw new Error(`Circular variable dependency: ${cycle.join(' -> ')}`);
+      throw new Error(`Circular variable dependency: ${cycle.join(" -> ")}`);
     }
 
     const pattern = this.variables.get(name);
