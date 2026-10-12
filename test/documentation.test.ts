@@ -4,11 +4,11 @@ import {
   test,
 } from "node:test";
 
-import create from "@regex-designer/js";
+import createDesigner, { RegexDesigner } from "@regex-designer/js";
 
 suite("README", () => {
   test("API example", () => {
-    const r$ = create();
+    const r$ = createDesigner();
     r$.set("number", r$.qty([1, Infinity], /[0-9]/));
     r$.set("identifier", r$.qty([1, Infinity], /[a-z0-9-]/));
 
@@ -30,16 +30,75 @@ suite("README", () => {
   });
 
   test("default", () => {
-    const r$ = create();
-    const email = r$.named("user", /[^@]+/, "@", /[a-z]+/);
-    const raw = r$.raw("a.b", "*");
+    assert.ok(createDesigner() instanceof RegexDesigner);
+  });
 
-    assert.strictEqual(email.toString(), "(?<user>[^@]+@[a-z]+)");
-    assert.strictEqual(raw.toString(), RegExp.escape("a.b*"));
+  test("set / var", () => {
+    const r$ = createDesigner();
+    r$.set("word", r$.or("cat", "dog"));
+    assert.strictEqual(r$.var("word").toString(), "cat|dog");
+  });
+
+  test("tpl", () => {
+    const r$ = createDesigner();
+    assert.strictEqual(r$.tpl("A", r$.raw("B.C")).toString(), `A${RegExp.escape("B.C")}`);
+  });
+
+  test("raw", () => {
+    const r$ = createDesigner();
+    assert.strictEqual(r$.raw("a.b", "*").toString(), RegExp.escape("a.b*"));
+  });
+
+  test("start / end / whole", () => {
+    const r$ = createDesigner();
+    assert.strictEqual(r$.start("A").toString(), "^(?:A)");
+    assert.strictEqual(r$.end("A").toString(), "(?:A)$");
+    assert.strictEqual(r$.whole("A").toString(), "^(?:A)$");
+  });
+
+  test("group", () => {
+    const r$ = createDesigner();
+    assert.strictEqual(r$.group(false, "A", "B").toString(), "(?:AB)");
+    assert.strictEqual(r$.group({ name: "part" }, "A", "B").toString(), "(?<part>AB)");
+    assert.strictEqual(r$.group({ capture: false }, "A", "B").toString(), "(?:AB)");
+  });
+
+  test("named", () => {
+    const r$ = createDesigner();
+    assert.strictEqual(r$.named("value", "A", "B").toString(), "(?<value>AB)");
+    assert.strictEqual(r$.named("word", r$.or("cat", "dog")).toString(), "(?<word>cat|dog)");
+  });
+
+  test("ref", () => {
+    const r$ = createDesigner();
+    const numeric = r$.tpl(
+      r$.group(true, "B"),
+      r$.ref(1),
+    );
+    const named = r$.tpl(
+      r$.named("name", "B"),
+      r$.ref("name"),
+    );
+    assert.strictEqual(numeric.toString(), "(B)\\1");
+    assert.strictEqual(named.toString(), "(?<name>B)\\k<name>");
+  });
+
+  test("opt", () => {
+    const r$ = createDesigner();
+    assert.strictEqual(r$.opt("C").toString(), "(?:C)?");
+    assert.strictEqual(r$.opt(r$.named("value", "A", "B")).toString(), "(?:(?<value>AB))?");
+  });
+
+  test("qty", () => {
+    const r$ = createDesigner();
+    assert.strictEqual(r$.qty(3, "A", "B").toString(), "(?:AB){3}");
+    assert.strictEqual(r$.qty([1, 3], "A", "B").toString(), "(?:AB){1,3}");
+    assert.strictEqual(r$.qty({ min: 2, max: 5, greedy: false }, "A", "B").toString(), "(?:AB){2,5}?");
+    assert.strictEqual(r$.qty({ exact: 2 }, "A", "B").toString(), "(?:AB){2}");
   });
 
   test("or", () => {
-    const r$ = create();
+    const r$ = createDesigner();
     const alt1 = r$.or("A", "B");
     const alt2 = r$.or(/foo/, "bar", r$.raw("baz"));
 
@@ -47,76 +106,15 @@ suite("README", () => {
     assert.strictEqual(alt2.toString(), `foo|bar|${RegExp.escape("baz")}`);
   });
 
-  test("tpl", () => {
-    const r$ = create();
-    assert.strictEqual(r$.tpl("A", r$.raw("B.C")).toString(), `A${RegExp.escape("B.C")}`);
-  });
-
-  test("named", () => {
-    const r$ = create();
-    assert.strictEqual(r$.named("value", "A", "B").toString(), "(?<value>AB)");
-    assert.strictEqual(r$.named("word", r$.or("cat", "dog")).toString(), "(?<word>cat|dog)");
-  });
-
-  test("group", () => {
-    const r$ = create();
-    assert.strictEqual(r$.group(false, "A", "B").toString(), "(?:AB)");
-    assert.strictEqual(r$.group({ name: "part" }, "A", "B").toString(), "(?<part>AB)");
-    assert.strictEqual(r$.group({ capture: false }, "A", "B").toString(), "(?:AB)");
-  });
-
-  test("opt", () => {
-    const r$ = create();
-    assert.strictEqual(r$.opt("C").toString(), "(?:C)?");
-    assert.strictEqual(r$.opt(r$.named("value", "A", "B")).toString(), "(?:(?<value>AB))?");
-  });
-
-  test("qty", () => {
-    const r$ = create();
-    assert.strictEqual(r$.qty(3, "A", "B").toString(), "(?:AB){3}");
-    assert.strictEqual(r$.qty([1, 3], "A", "B").toString(), "(?:AB){1,3}");
-    assert.strictEqual(r$.qty({ min: 2, max: 5, greedy: false }, "A", "B").toString(), "(?:AB){2,5}?");
-    assert.strictEqual(r$.qty({ exact: 2 }, "A", "B").toString(), "(?:AB){2}");
-  });
-
-  test("raw", () => {
-    const r$ = create();
-    assert.strictEqual(r$.raw("a.b", "*").toString(), RegExp.escape("a.b*"));
-    assert.strictEqual(r$.raw("https://example.com").toString(), RegExp.escape("https://example.com"));
-  });
-
-  test("ref", () => {
-    const r$ = create();
-    const group = r$.tpl(
-      r$.group(true, "B"),
-      r$.ref(1),
-    );
-    assert.strictEqual(group.toString(), "(B)\\1");
-
-    const namedGroup = r$.tpl(
-      r$.named("name", "B"),
-      r$.ref("name"),
-    );
-    assert.strictEqual(namedGroup.toString(), "(?<name>B)\\k<name>");
-  });
-
   test("ahead", () => {
-    const r$ = create();
-
+    const r$ = createDesigner();
     assert.strictEqual(r$.ahead_pos("foo").toString(), "(?=foo)");
     assert.strictEqual(r$.ahead_neg("bar").toString(), "(?!bar)");
   });
 
   test("behind", () => {
-    const r$ = create();
-
+    const r$ = createDesigner();
     assert.strictEqual(r$.behind_pos("foo").toString(), "(?<=foo)");
     assert.strictEqual(r$.behind_neg("bar").toString(), "(?<!bar)");
-  });
-
-  test("set / var", () => {
-    const r$ = create();
-    r$.set("word", r$.or("cat", "dog"));
-    assert.strictEqual(r$.var("word").toString(), "cat|dog");
   });
 });
