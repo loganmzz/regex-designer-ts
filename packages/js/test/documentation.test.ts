@@ -4,7 +4,7 @@ import {
   test,
 } from "node:test";
 
-import createDesigner, { RegexDesigner } from "@regex-designer/js";
+import createDesigner, { JSRegexDesigner } from "@regex-designer/js";
 
 suite("README", () => {
   test("API example", () => {
@@ -17,9 +17,11 @@ suite("README", () => {
       r$.var("number"), /\./, r$.var("number"), /\./, r$.var("number"),
       r$.opt("-", r$.named("prerelease", r$.var("identifier"))),
     );
+    assert.strictEqual(template.toString(), "(?<version>(?:[0-9]){1,}\\.(?:[0-9]){1,}\\.(?:[0-9]){1,}(?:-(?<prerelease>(?:[a-z0-9-]){1,}))?)");
     const regex = template("i");
     assert.strictEqual(regex.source, "(?<version>(?:[0-9]){1,}\\.(?:[0-9]){1,}\\.(?:[0-9]){1,}(?:-(?<prerelease>(?:[a-z0-9-]){1,}))?)");
     assert.strictEqual(regex.flags, "i");
+    assert.strictEqual(regex.test("12.3.4-beta-1"), true);
     assert.deepStrictEqual(
       { ...regex.exec("12.3.4-beta-1")?.groups },
       {
@@ -30,36 +32,54 @@ suite("README", () => {
   });
 
   test("default", () => {
-    assert.ok(createDesigner() instanceof RegexDesigner);
+    const r$: JSRegexDesigner = createDesigner();
+    assert.ok(r$ instanceof JSRegexDesigner);
+
+    const other = createDesigner().set("word", "B");
+    r$.set("word", "A");
+    assert.strictEqual(r$.var("word").toString(), "A");
+    assert.strictEqual(other.var("word").toString(), "B");
   });
 
   test("set / var", () => {
     const r$ = createDesigner();
     r$.set("word", r$.or("cat", "dog"));
     assert.strictEqual(r$.var("word").toString(), "cat|dog");
+
+    assert.throws(() => r$.var("missing").toString(), {
+      message: "Variable \"missing\" is not set",
+    });
+    r$.set("loop", r$.var("loop"));
+    assert.throws(() => r$.var("loop").toString(), {
+      message: "Circular variable dependency: loop -> loop",
+    });
   });
 
   test("tpl", () => {
     const r$ = createDesigner();
-    assert.strictEqual(r$.tpl("A", r$.raw("B.C")).toString(), `A${RegExp.escape("B.C")}`);
+    assert.strictEqual(r$.tpl("A", "B").toString(), "AB");
+    assert.strictEqual(r$.tpl("A", r$.raw("B.C")).toString(), "A\\x42\\.C");
   });
 
   test("raw", () => {
     const r$ = createDesigner();
-    assert.strictEqual(r$.raw("a.b", "*").toString(), RegExp.escape("a.b*"));
+    assert.strictEqual(r$.raw("a.b", "*").toString(), "\\x61\\.b\\*");
+    assert.strictEqual(r$.raw("https://example.com").toString(), "\\x68ttps\\x3a\\/\\/example\\.com");
   });
 
   test("start / end / whole", () => {
     const r$ = createDesigner();
-    assert.strictEqual(r$.start("A").toString(), "^(?:A)");
-    assert.strictEqual(r$.end("A").toString(), "(?:A)$");
-    assert.strictEqual(r$.whole("A").toString(), "^(?:A)$");
+    assert.strictEqual(r$.start("foo").toString(), "^(?:foo)");
+    assert.strictEqual(r$.end("bar").toString(), "(?:bar)$");
+    assert.strictEqual(r$.whole("baz").toString(), "^(?:baz)$");
   });
 
   test("group", () => {
     const r$ = createDesigner();
+    assert.strictEqual(r$.group(true, "A").toString(), "(A)");
     assert.strictEqual(r$.group(false, "A", "B").toString(), "(?:AB)");
     assert.strictEqual(r$.group({ name: "part" }, "A", "B").toString(), "(?<part>AB)");
+    assert.strictEqual(r$.group({ capture: true }, "A").toString(), "(A)");
     assert.strictEqual(r$.group({ capture: false }, "A", "B").toString(), "(?:AB)");
   });
 
@@ -67,6 +87,7 @@ suite("README", () => {
     const r$ = createDesigner();
     assert.strictEqual(r$.named("value", "A", "B").toString(), "(?<value>AB)");
     assert.strictEqual(r$.named("word", r$.or("cat", "dog")).toString(), "(?<word>cat|dog)");
+    assert.strictEqual(r$.named("user", /[^@]+/, "@", /[a-z]+/).toString(), "(?<user>[^@]+@[a-z]+)");
   });
 
   test("ref", () => {
@@ -92,28 +113,35 @@ suite("README", () => {
   test("qty", () => {
     const r$ = createDesigner();
     assert.strictEqual(r$.qty(3, "A", "B").toString(), "(?:AB){3}");
+    assert.strictEqual(r$.qty([3, 3], "A", "B").toString(), "(?:AB){3}");
     assert.strictEqual(r$.qty([1, 3], "A", "B").toString(), "(?:AB){1,3}");
+    assert.strictEqual(r$.qty([1, Infinity], "A", "B").toString(), "(?:AB){1,}");
+    assert.strictEqual(r$.qty({ exact: 3 }, "A", "B").toString(), "(?:AB){3}");
+    assert.strictEqual(r$.qty({ exact: 3, greedy: false }, "A", "B").toString(), "(?:AB){3}?");
+    assert.strictEqual(r$.qty({ min: 2 }, "A", "B").toString(), "(?:AB){2,}");
+    assert.strictEqual(r$.qty({ min: 2, max: 5 }, "A", "B").toString(), "(?:AB){2,5}");
     assert.strictEqual(r$.qty({ min: 2, max: 5, greedy: false }, "A", "B").toString(), "(?:AB){2,5}?");
-    assert.strictEqual(r$.qty({ exact: 2 }, "A", "B").toString(), "(?:AB){2}");
   });
 
   test("or", () => {
     const r$ = createDesigner();
-    const alt1 = r$.or("A", "B");
-    const alt2 = r$.or(/foo/, "bar", r$.raw("baz"));
-
-    assert.strictEqual(alt1.toString(), "A|B");
-    assert.strictEqual(alt2.toString(), `foo|bar|${RegExp.escape("baz")}`);
+    assert.strictEqual(r$.or("cat", "dog").toString(), "cat|dog");
+    assert.strictEqual(r$.or("A", "B").toString(), "A|B");
+    assert.strictEqual(r$.or(/foo/, "bar", r$.raw("baz")).toString(), "foo|bar|\\x62az");
   });
 
   test("ahead", () => {
     const r$ = createDesigner();
+    assert.strictEqual(r$.ahead(true, "foo").toString(), "(?=foo)");
+    assert.strictEqual(r$.ahead(false, "foo").toString(), "(?!foo)");
     assert.strictEqual(r$.ahead_pos("foo").toString(), "(?=foo)");
     assert.strictEqual(r$.ahead_neg("bar").toString(), "(?!bar)");
   });
 
   test("behind", () => {
     const r$ = createDesigner();
+    assert.strictEqual(r$.behind(true, "foo").toString(), "(?<=foo)");
+    assert.strictEqual(r$.behind(false, "foo").toString(), "(?<!foo)");
     assert.strictEqual(r$.behind_pos("foo").toString(), "(?<=foo)");
     assert.strictEqual(r$.behind_neg("bar").toString(), "(?<!bar)");
   });

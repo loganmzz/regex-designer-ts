@@ -1,0 +1,24 @@
+{
+  "name": "@regex-designer/core",
+  "version": "0.1.1",
+  "description": "Shared types for regex designer implementations.",
+  "type": "module",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint --config ../../eslint.config.* .",
+    "test": "npm run build && tsc -p tsconfig.test.json && node --test test/*.test.ts",
+    "check": "npm run lint && npm run test"
+  }
+}

@@ -5,7 +5,7 @@ import {
 } from "node:test";
 
 import create, {
-  RegexDesigner,
+  JSRegexDesigner,
   isRegexTemplate,
 } from "@regex-designer/js";
 import type { GroupOptions } from "@regex-designer/js";
@@ -90,20 +90,20 @@ suite("templates", () => {
   });
 
   test("var(some): <some>", () => {
-    const one = new RegexDesigner().set("some", "A");
+    const one = new JSRegexDesigner().set("some", "A");
     const regex = one.var("some");
     assert.strictEqual(regex.toString(), "A");
     assert.strictEqual(one.or(one.var("some"), one.var("some")).toString(), "A|A");
   });
 
   test("var: detects circular dependencies", () => {
-    const direct = new RegexDesigner();
+    const direct = new JSRegexDesigner();
     direct.set("a", direct.var("a"));
     assert.throws(() => direct.var("a").toString(), {
       message: "Circular variable dependency: a -> a",
     });
 
-    const indirect = new RegexDesigner();
+    const indirect = new JSRegexDesigner();
     indirect.set("a", indirect.var("b"));
     indirect.set("b", indirect.var("c"));
     indirect.set("c", indirect.var("a"));
@@ -113,9 +113,9 @@ suite("templates", () => {
   });
 
   test("var: keep variables isolated between builders", () => {
-    const one = new RegexDesigner()
+    const one = new JSRegexDesigner()
       .set("some", "A");
-    const other = new RegexDesigner()
+    const other = new JSRegexDesigner()
       .set("some", "B");
     ;
     assert.strictEqual(one.var("some").toString(), "A");
