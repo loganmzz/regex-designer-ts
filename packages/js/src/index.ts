@@ -1,42 +1,27 @@
-/** A lazy regex template that can render pattern text or compile to a native RegExp. */
-export interface RegexTemplate {
-  /** Compile the rendered pattern with the supplied flags. */
-  (flags?: string): RegExp;
-  /** Render the pattern; when compiling, validates embedded Unicode flags. */
-  render(flags?: string, compiling?: boolean): string;
-  /** Render the pattern text without compiling it. */
-  toString(): string;
-}
-
-/** Check whether a value is a regex template. */
-export function isRegexTemplate(value: unknown): value is RegexTemplate {
-  return typeof value === "function" && "render" in value && typeof value.render === "function";
-}
-
 /**
- * A regex source string, native RegExp, or lazy regex template.
- * Strings are regex syntax, not escaped literals. Embedded RegExp values scope
- * their i, m, and s flags locally, require u or v when compiling, and do not
- * carry over d, g, or y.
+ * The JavaScript package exposes a default factory and a `JSRegexDesigner` class. It extends the abstract `RegexDesigner` contract from `@regex-designer/core`. Templates are compiled to a native `RegExp`.
  */
-export type RegexValue = string | RegExp | RegexTemplate;
 
-/** Mutually exclusive settings for a named capturing group or an unnamed group. */
-export type GroupNamedOptions =
-  | { name: string; capture?: never }
-  | { name?: never; capture?: boolean };
+import type {
+  GroupOptions,
+  QuantityOptions,
+  RegexTemplate as CoreRegexTemplate,
+  RegexValue as CoreRegexValue,
+} from "@regex-designer/core";
+import {
+  RegexDesigner,
+  isRegexTemplate,
+} from "@regex-designer/core";
 
-/** Configure a group with a capture boolean or named-group options. */
-export type GroupOptions = GroupNamedOptions | boolean;
-
-/** Repetition bounds; specify either an exact count or a minimum and optional maximum. */
-export type QuantityNamedOptions = (
-  | { exact: number; min?: never; max?: never }
-  | { exact?: never; min: number; max?: number }
-) & { greedy?: boolean };
-
-/** Repetition count, [minimum, maximum] tuple, or named bounds. */
-export type QuantityOptions = number | [min: number, max?: number] | QuantityNamedOptions;
+export type {
+  GroupNamedOptions,
+  GroupOptions,
+  QuantityNamedOptions,
+  QuantityOptions,
+} from "@regex-designer/core";
+export type RegexTemplate = CoreRegexTemplate<RegExp>;
+export type RegexValue = CoreRegexValue<RegExp>;
+export { isRegexTemplate } from "@regex-designer/core";
 
 function patternString(pattern: RegexValue, flags: string | undefined, compiling: boolean): string {
   if (pattern instanceof RegExp) {
@@ -130,130 +115,105 @@ function raw(...patterns: string[]): RegexTemplate {
   return template(() => patterns.map(p => RegExp.escape(p)).join(""));
 }
 
-/** Compose lazy regex templates and resolve reusable variables in an isolated scope. */
-export class RegexDesigner {
-  private readonly variables = new Map<string, RegexValue>();
-  private readonly resolvingVariables: string[] = [];
+/**
+ * Create a new JavaScript regex designer with its own variable scope.
+ * @readme default
+ */
+export default function create(): JSRegexDesigner {
+  return new JSRegexDesigner();
+}
 
-  /** Define or replace a lazy pattern variable on this designer. */
-  set(name: string, ...patterns: RegexValue[]): this {
-    this.variables.set(name, tpl(...patterns));
-    return this;
-  }
-
-  /** Reference a variable, resolving it when this template is rendered. */
-  var(name: string): RegexTemplate {
-    return template((flags, compiling) => this.resolveVariable(name, flags, compiling));
-  }
-
-  private resolveVariable(name: string, flags: string | undefined, compiling: boolean): string {
-    const cycleStart = this.resolvingVariables.indexOf(name);
-    if (cycleStart !== -1) {
-      const cycle = [...this.resolvingVariables.slice(cycleStart), name];
-      throw new Error(`Circular variable dependency: ${cycle.join(" -> ")}`);
-    }
-
-    const pattern = this.variables.get(name);
-    if (pattern === undefined) {
-      throw new Error(`Variable "${name}" is not set`);
-    }
-
-    this.resolvingVariables.push(name);
-    try {
-      return patternString(pattern, flags, compiling);
-    } finally {
-      this.resolvingVariables.pop();
-    }
+/**
+ * Templates are compiled to a native `RegExp`.
+ */
+export class JSRegexDesigner extends RegexDesigner<RegExp> {
+  protected override createTemplate(render: (flags: string | undefined, compiling: boolean) => string): RegexTemplate {
+    return template(render);
   }
 
   /** Concatenate patterns without adding groups or escaping. */
-  tpl(...patterns: RegexValue[]): RegexTemplate {
+  override tpl(...patterns: RegexValue[]): RegexTemplate {
     return tpl(...patterns);
   }
 
   /** Escape literal text for use in a regex pattern. */
-  raw(...patterns: string[]): RegexTemplate {
+  override raw(...patterns: string[]): RegexTemplate {
     return raw(...patterns);
   }
 
   /** Match the concatenated patterns at the start of the input. */
-  start(...patterns: RegexValue[]): RegexTemplate {
+  override start(...patterns: RegexValue[]): RegexTemplate {
     return anchor(true, false, patterns);
   }
 
   /** Match the concatenated patterns at the end of the input. */
-  end(...patterns: RegexValue[]): RegexTemplate {
+  override end(...patterns: RegexValue[]): RegexTemplate {
     return anchor(false, true, patterns);
   }
 
   /** Match the concatenated patterns across the whole input. */
-  whole(...patterns: RegexValue[]): RegexTemplate {
+  override whole(...patterns: RegexValue[]): RegexTemplate {
     return anchor(true, true, patterns);
   }
 
   /** Group patterns, optionally capturing them or assigning a capture name. */
-  group(options: GroupOptions, ...patterns: RegexValue[]): RegexTemplate {
+  override group(options: GroupOptions, ...patterns: RegexValue[]): RegexTemplate {
     return group(options, ...patterns);
   }
 
   /** Create a named capturing group around the concatenated patterns. */
-  named(name: string, ...patterns: RegexValue[]): RegexTemplate {
+  override named(name: string, ...patterns: RegexValue[]): RegexTemplate {
     return named(name, ...patterns);
   }
 
   /** Create a numeric or named backreference. */
-  ref(reference: number | string): RegexTemplate {
+  override ref(reference: number | string): RegexTemplate {
     return template(() => typeof reference === "number" ? `\\${reference}` : `\\k<${reference}>`);
   }
 
   /** Make the concatenated patterns optional using a non-capturing group. */
-  opt(...patterns: RegexValue[]): RegexTemplate {
+  override opt(...patterns: RegexValue[]): RegexTemplate {
     return opt(...patterns);
   }
 
   /** Repeat the concatenated patterns according to the supplied bounds. */
-  qty(quantity: QuantityOptions, ...patterns: RegexValue[]): RegexTemplate {
+  override qty(quantity: QuantityOptions, ...patterns: RegexValue[]): RegexTemplate {
     return qty(quantity, ...patterns);
   }
 
   /** Join patterns with alternation without adding groups. */
-  or(...patterns: RegexValue[]): RegexTemplate {
+  override or(...patterns: RegexValue[]): RegexTemplate {
     return or(...patterns);
   }
 
   /** Create a positive or negative lookahead assertion. */
-  ahead(positive: boolean, ...patterns: RegexValue[]): RegexTemplate {
+  override ahead(positive: boolean, ...patterns: RegexValue[]): RegexTemplate {
     return look("?", positive, patterns);
   }
 
   /** Create a positive lookahead assertion. */
-  ahead_pos(...patterns: RegexValue[]): RegexTemplate {
+  override ahead_pos(...patterns: RegexValue[]): RegexTemplate {
     return look("?", true, patterns);
   }
 
   /** Create a negative lookahead assertion. */
-  ahead_neg(...patterns: RegexValue[]): RegexTemplate {
+  override ahead_neg(...patterns: RegexValue[]): RegexTemplate {
     return look("?", false, patterns);
   }
 
   /** Create a positive or negative lookbehind assertion. */
-  behind(positive: boolean, ...patterns: RegexValue[]): RegexTemplate {
+  override behind(positive: boolean, ...patterns: RegexValue[]): RegexTemplate {
     return look("?<", positive, patterns);
   }
 
   /** Create a positive lookbehind assertion. */
-  behind_pos(...patterns: RegexValue[]): RegexTemplate {
+  override behind_pos(...patterns: RegexValue[]): RegexTemplate {
     return look("?<", true, patterns);
   }
 
   /** Create a negative lookbehind assertion. */
-  behind_neg(...patterns: RegexValue[]): RegexTemplate {
+  override behind_neg(...patterns: RegexValue[]): RegexTemplate {
     return look("?<", false, patterns);
   }
 
-}
-
-/** Create a new regex designer with its own variable scope. */
-export default function create(): RegexDesigner {
-  return new RegexDesigner();
 }

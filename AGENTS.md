@@ -6,10 +6,10 @@ this repository. See [README.md](README.md) for the public API and usage example
 ## Design
 
 - Keep this a small TypeScript library for composing native JavaScript regular
-  expressions, with no runtime dependencies. Avoid introducing a separate regex
-  engine or polyfills for older runtimes.
-- Preserve the default factory, named exports, and public types in
-  [src/index.ts](src/index.ts). Discuss breaking API changes explicitly.
+  expressions, with no external runtime dependencies. Internal workspace
+  packages are acceptable. Avoid introducing a separate regex engine or
+  polyfills for older runtimes.
+- Discuss breaking API changes explicitly.
 - Templates are lazy and callable: `toString()` renders pattern text, while
   invoking a template compiles a native `RegExp`. Do not eagerly resolve nested
   templates or variables.
@@ -38,12 +38,42 @@ this repository. See [README.md](README.md) for the public API and usage example
   inequalities, or wildcards) or tags such as `latest`. Use `npm install
   --save-exact` when adding or updating dependencies and update the lockfile.
 - Use Node's built-in `node:test` and `node:assert/strict` in the existing
-  [test](test/) files. Tests import the built package as `@regex-designer/js`.
+  test files. Tests import the tested package by its full package name, not by
+  path.
 - For behavior changes, cover rendered text and compiled matching behavior where
   relevant, including flags, captures, invalid inputs, and lazy resolution.
-- Update [README.md](README.md) and
-  [test/documentation.test.ts](test/documentation.test.ts) together when public
-  API examples or behavior change. Keep examples executable.
+- Include only public declarations tagged with `@readme` in README API sections;
+  leave untagged exports such as `isRegexTemplate` out. For a new user-facing API,
+  add `@readme <section heading>` to its JSDoc. Use the same heading to group
+  related declarations (for example, `@readme start / end / whole`).
+  Keep shared tags in core and implementation-specific tags in the implementation.
+  Order groups by their first tagged declaration, with implementation-specific
+  groups before shared groups. Manually update sections and ToCs when tags change;
+  tags do not generate documentation or change exports.
+- Document selected API additions and changes in [packages/core/README.md](packages/core/README.md)
+  and applicable implementation READMEs. Keep core examples simple, without imports,
+  designer creation, or expected output. In each implementation README, include
+  the package import and designer creation in the first global API example; make
+  method examples concrete with expected output, without repeating that setup.
+  Write expected output as an unquoted trailing comment on the template
+  expression, without calling `toString()`.
+- Put a table of contents listing API methods immediately after the `## API`
+  heading in each API README.
+- Use template method names in API headings and ToCs, separating grouped methods
+  with `/` (for example, `start / end / whole`) instead of category labels.
+- Document each template method with a method-name heading, a code block of
+  signatures, a brief description, and a code block of examples. For a section
+  grouping multiple methods, summarize their combined usage instead of
+  concatenating their JSDoc descriptions. For a single-method section, match the
+  description to its JSDoc. For union-typed options, show each accepted
+  method-signature variant and include examples covering the available variants.
+  Omit `never` properties from documented signature variants.
+- Update all README files and documentation tests together when public API
+  examples or behavior change. Examples may assume an existing `r$` builder;
+  keep implementation examples executable in that context.
+- Keep the module-level JSDoc at the top of each `index.ts` synchronized verbatim
+  with the introductory text paragraph in the corresponding README's `## API`
+  section.
 - Do not edit generated `dist/` output; rebuild it from TypeScript.
 
 ## Git
@@ -58,9 +88,14 @@ this repository. See [README.md](README.md) for the public API and usage example
 - Use Node.js 24 or newer; [mise.toml](mise.toml) pins the development version.
   Install dependencies with `npm ci`.
 - `npm run build` emits ESM JavaScript, declarations, and source maps.
-- `npm run typecheck` builds the library and type-checks tests.
 - For a focused test, build first, then run e.g.
-  `node --test test/documentation.test.ts`.
+  `node --test packages/js/test/documentation.test.ts`.
 - Validate all changes with `npm run check` before considering them complete:
   it runs ESLint, type checking, and all tests. Fix failures caused by your
   changes and report any checks that could not be run.
+- Before completing a task, check the resulting work against all applicable
+  instructions in this file. Report any unmet requirements or non-compliance.
+- For compliance reviews, assess the current repository and applicable commit
+  history against these instructions. Report each issue with severity and
+  location, distinguish existing issues from changes under review, and summarize
+  the checks performed.
