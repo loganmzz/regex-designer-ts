@@ -5,6 +5,8 @@
 import type {
   GroupOptions,
   QuantityOptions,
+  RegexDesignerWithBackreferences,
+  RegexDesignerWithLookarounds,
   RegexTemplate as CoreRegexTemplate,
   RegexValue as CoreRegexValue,
 } from "@regex-designer/core";
@@ -18,6 +20,8 @@ export type {
   GroupOptions,
   QuantityNamedOptions,
   QuantityOptions,
+  RegexDesignerWithBackreferences,
+  RegexDesignerWithLookarounds,
 } from "@regex-designer/core";
 export type RegexTemplate = CoreRegexTemplate<RegExp>;
 export type RegexValue = CoreRegexValue<RegExp>;
@@ -126,7 +130,7 @@ export default function create(): JSRegexDesigner {
 /**
  * Templates are compiled to a native `RegExp`.
  */
-export class JSRegexDesigner extends RegexDesigner<RegExp> {
+export class JSRegexDesigner extends RegexDesigner<RegExp> implements RegexDesignerWithBackreferences<RegExp>, RegexDesignerWithLookarounds<RegExp> {
   protected override createTemplate(render: (flags: string | undefined, compiling: boolean) => string): RegexTemplate {
     return template(render);
   }
@@ -167,7 +171,7 @@ export class JSRegexDesigner extends RegexDesigner<RegExp> {
   }
 
   /** Create a numeric or named backreference. */
-  override ref(reference: number | string): RegexTemplate {
+  ref(reference: number | string): RegexTemplate {
     return template(() => typeof reference === "number" ? `\\${reference}` : `\\k<${reference}>`);
   }
 
@@ -186,32 +190,32 @@ export class JSRegexDesigner extends RegexDesigner<RegExp> {
     return or(...patterns);
   }
 
-  /** Create a positive or negative lookahead assertion. */
+  /** Create a positive or negative [lookahead assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookahead_assertion). */
   override ahead(positive: boolean, ...patterns: RegexValue[]): RegexTemplate {
     return look("?", positive, patterns);
   }
 
-  /** Create a positive lookahead assertion. */
+  /** Create a positive [lookahead assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookahead_assertion). */
   override ahead_pos(...patterns: RegexValue[]): RegexTemplate {
     return look("?", true, patterns);
   }
 
-  /** Create a negative lookahead assertion. */
+  /** Create a negative [lookahead assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookahead_assertion). */
   override ahead_neg(...patterns: RegexValue[]): RegexTemplate {
     return look("?", false, patterns);
   }
 
-  /** Create a positive or negative lookbehind assertion. */
+  /** Create a positive or negative [lookbehind assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookbehind_assertion). */
   override behind(positive: boolean, ...patterns: RegexValue[]): RegexTemplate {
     return look("?<", positive, patterns);
   }
 
-  /** Create a positive lookbehind assertion. */
+  /** Create a positive [lookbehind assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookbehind_assertion). */
   override behind_pos(...patterns: RegexValue[]): RegexTemplate {
     return look("?<", true, patterns);
   }
 
-  /** Create a negative lookbehind assertion. */
+  /** Create a negative [lookbehind assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookbehind_assertion). */
   override behind_neg(...patterns: RegexValue[]): RegexTemplate {
     return look("?<", false, patterns);
   }

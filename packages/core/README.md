@@ -6,6 +6,7 @@ expressions.
 Official implementations:
 
 * [native JavaScript](https://www.npmjs.com/package/@regex-designer/js)
+* [RE2](https://www.npmjs.com/package/@regex-designer/re2)
 
 ## API
 
@@ -140,7 +141,7 @@ r$.named("word", r$.or("cat", "dog"));
 ### ref
 
 ```ts
-ref(reference: number | string): RegexTemplate<TRegex>
+ref?(reference: number | string): RegexTemplate<TRegex>
 ```
 
 Create a [numeric](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Backreference) or [named](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Named_backreference) backreference.
@@ -210,14 +211,12 @@ r$.or("bar", r$.raw("baz"));
 ### ahead / ahead_pos / ahead_neg
 
 ```ts
-ahead(positive: boolean, ...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>
-ahead_pos(...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>
-ahead_neg(...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>
+ahead?(positive: boolean, ...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>
+ahead_pos?(...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>
+ahead_neg?(...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>
 ```
 
-Use a [lookahead assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookahead_assertion)
-to test whether the concatenated patterns match next without consuming input.
-Choose the assertion polarity with `ahead()` or use a fixed-polarity method.
+Create a positive or negative [lookahead assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookahead_assertion).
 
 ```ts
 r$.ahead(true, "foo");
@@ -229,15 +228,12 @@ r$.ahead_neg("bar");
 ### behind / behind_pos / behind_neg
 
 ```ts
-behind(positive: boolean, ...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>
-behind_pos(...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>
-behind_neg(...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>
+behind?(positive: boolean, ...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>
+behind_pos?(...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>
+behind_neg?(...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>
 ```
 
-Use a [lookbehind assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookbehind_assertion)
-to test whether the concatenated patterns match before the current position
-without consuming input. Choose the assertion polarity with `behind()` or use a
-fixed-polarity method.
+Create a positive or negative [lookbehind assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookbehind_assertion).
 
 ```ts
 r$.behind(true, "foo");
