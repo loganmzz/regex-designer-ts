@@ -25,13 +25,13 @@ import createDesigner from "@regex-designer/js";
 
 const r$ = createDesigner();
 
-r$.set("number", r$.qty([1, Infinity], /[0-9]/));
-r$.set("identifier", r$.qty([1, Infinity], /[a-z0-9-]/));
+r$.set("number", r$.qty([1, Infinity], "[0-9]"));
+r$.set("identifier", r$.qty([1, Infinity], "[a-z0-9-]"));
 
 // (?<version>(?:[0-9]){1,}\.(?:[0-9]){1,}\.(?:[0-9]){1,}(?:-(?<prerelease>(?:[a-z0-9-]){1,}))?)
 const template = r$.named(
   "version",
-  r$.var("number"), /\./, r$.var("number"), /\./, r$.var("number"),
+  r$.var("number"), "\\.", r$.var("number"), "\\.", r$.var("number"),
   r$.opt("-", r$.named("prerelease", r$.var("identifier"))),
 );
 const regex = template("i"); // Compile the template to a native RegExp
@@ -211,7 +211,7 @@ without adding groups.
 
 ```ts
 r$.or("cat", "dog"); // cat|dog
-r$.or(/foo/, "bar", r$.raw("baz")); // foo|bar|\x62az
+r$.or("foo", "bar", r$.raw("baz")); // foo|bar|\x62az
 ```
 
 ### ahead / ahead_pos / ahead_neg
@@ -222,9 +222,7 @@ ahead_pos(...patterns: RegexValue[]): RegexTemplate
 ahead_neg(...patterns: RegexValue[]): RegexTemplate
 ```
 
-Use a [lookahead assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookahead_assertion)
-to test whether the concatenated patterns match next without consuming input.
-Choose the assertion polarity with `ahead()` or use a fixed-polarity method.
+Create a positive or negative [lookahead assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookahead_assertion).
 
 ```ts
 r$.ahead(true, "foo"); // (?=foo)
@@ -241,10 +239,7 @@ behind_pos(...patterns: RegexValue[]): RegexTemplate
 behind_neg(...patterns: RegexValue[]): RegexTemplate
 ```
 
-Use a [lookbehind assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookbehind_assertion)
-to test whether the concatenated patterns match before the current position
-without consuming input. Choose the assertion polarity with `behind()` or use a
-fixed-polarity method.
+Create a positive or negative [lookbehind assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookbehind_assertion).
 
 ```ts
 r$.behind(true, "foo"); // (?<=foo)

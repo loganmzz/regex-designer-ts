@@ -48,6 +48,48 @@ export type QuantityNamedOptions = (
 /** Repetition count, [minimum, maximum] tuple, or named bounds. */
 export type QuantityOptions = number | [min: number, max?: number] | QuantityNamedOptions;
 
+/** A regex designer that supports numeric and named backreferences. */
+export interface RegexDesignerWithBackreferences<TRegex = unknown> {
+  /**
+   * Create a [numeric](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Backreference) or [named](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Named_backreference) backreference.
+   * @readme ref
+   */
+  ref(reference: number | string): RegexTemplate<TRegex>;
+}
+
+/** A regex designer that supports positive and negative lookahead and lookbehind assertions. */
+export interface RegexDesignerWithLookarounds<TRegex = unknown> {
+  /**
+   * Create a positive or negative [lookahead assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookahead_assertion).
+   */
+  ahead(positive: boolean, ...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>;
+
+  /**
+   * Create a positive [lookahead assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookahead_assertion).
+   */
+  ahead_pos(...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>;
+
+  /**
+   * Create a negative [lookahead assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookahead_assertion).
+   */
+  ahead_neg(...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>;
+
+  /**
+   * Create a positive or negative [lookbehind assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookbehind_assertion).
+   */
+  behind(positive: boolean, ...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>;
+
+  /**
+   * Create a positive [lookbehind assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookbehind_assertion).
+   */
+  behind_pos(...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>;
+
+  /**
+   * Create a negative [lookbehind assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookbehind_assertion).
+   */
+  behind_neg(...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>;
+}
+
 /**
  * The `RegexDesigner` creates lazy and reusable `RegexTemplate` values. A template
  * renders pattern text when stringified and compiles to a regular expression implementation when
@@ -125,11 +167,10 @@ export abstract class RegexDesigner<TRegex = unknown> {
   abstract named(name: string, ...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>;
 
   /**
-   * Create a [numeric](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Backreference)
-   * or [named](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Named_backreference) backreference.
+   * Create a [numeric](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Backreference) or [named](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Named_backreference) backreference.
    * @readme ref
    */
-  abstract ref(reference: number | string): RegexTemplate<TRegex>;
+  ref?(reference: number | string): RegexTemplate<TRegex>;
 
   /**
    * Make the concatenated patterns [optional](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Quantifier)
@@ -153,55 +194,40 @@ export abstract class RegexDesigner<TRegex = unknown> {
   abstract or(...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>;
 
   /**
-  * Use a [lookahead assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookahead_assertion)
-  * to test whether the concatenated patterns match next without consuming input.
-  * Choose the assertion polarity with `ahead()` or use a fixed-polarity method.
+   * Create a positive or negative [lookahead assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookahead_assertion).
    * @readme ahead / ahead_pos / ahead_neg
    */
-  abstract ahead(positive: boolean, ...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>;
+  ahead?(positive: boolean, ...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>;
 
   /**
-   * Use a [lookahead assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookahead_assertion)
-   * to test whether the concatenated patterns match next without consuming input.
-   * Choose the assertion polarity with `ahead()` or use a fixed-polarity method.
+   * Create a positive [lookahead assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookahead_assertion).
    * @readme ahead / ahead_pos / ahead_neg
    */
-  abstract ahead_pos(...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>;
+  ahead_pos?(...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>;
 
   /**
-   * Use a [lookahead assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookahead_assertion)
-   * to test whether the concatenated patterns match next without consuming input.
-   * Choose the assertion polarity with `ahead()` or use a fixed-polarity method.
+   * Create a negative [lookahead assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookahead_assertion).
    * @readme ahead / ahead_pos / ahead_neg
    */
-  abstract ahead_neg(...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>;
+  ahead_neg?(...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>;
 
   /**
-  * Use a [lookbehind assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookbehind_assertion)
-  * to test whether the concatenated patterns match before the current position
-  * without consuming input. Choose the assertion polarity with `behind()` or use a
-  * fixed-polarity method.
+   * Create a positive or negative [lookbehind assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookbehind_assertion).
    * @readme behind / behind_pos / behind_neg
    */
-  abstract behind(positive: boolean, ...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>;
+  behind?(positive: boolean, ...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>;
 
   /**
-   * Use a [lookbehind assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookbehind_assertion)
-   * to test whether the concatenated patterns match before the current position
-   * without consuming input. Choose the assertion polarity with `behind()` or use a
-   * fixed-polarity method.
+   * Create a positive [lookbehind assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookbehind_assertion).
    * @readme behind / behind_pos / behind_neg
    */
-  abstract behind_pos(...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>;
+  behind_pos?(...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>;
 
   /**
-   * Use a [lookbehind assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookbehind_assertion)
-   * to test whether the concatenated patterns match before the current position
-   * without consuming input. Choose the assertion polarity with `behind()` or use a
-   * fixed-polarity method.
+   * Create a negative [lookbehind assertion](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Lookbehind_assertion).
    * @readme behind / behind_pos / behind_neg
    */
-  abstract behind_neg(...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>;
+  behind_neg?(...patterns: RegexValue<TRegex>[]): RegexTemplate<TRegex>;
 
   protected abstract createTemplate(
     render: (flags: string | undefined, compiling: boolean) => string,

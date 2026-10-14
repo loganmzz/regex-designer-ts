@@ -9,12 +9,12 @@ import createDesigner, { JSRegexDesigner } from "@regex-designer/js";
 suite("README", () => {
   test("API example", () => {
     const r$ = createDesigner();
-    r$.set("number", r$.qty([1, Infinity], /[0-9]/));
-    r$.set("identifier", r$.qty([1, Infinity], /[a-z0-9-]/));
+    r$.set("number", r$.qty([1, Infinity], "[0-9]"));
+    r$.set("identifier", r$.qty([1, Infinity], "[a-z0-9-]"));
 
     const template = r$.named(
       "version",
-      r$.var("number"), /\./, r$.var("number"), /\./, r$.var("number"),
+      r$.var("number"), "\\.", r$.var("number"), "\\.", r$.var("number"),
       r$.opt("-", r$.named("prerelease", r$.var("identifier"))),
     );
     assert.strictEqual(template.toString(), "(?<version>(?:[0-9]){1,}\\.(?:[0-9]){1,}\\.(?:[0-9]){1,}(?:-(?<prerelease>(?:[a-z0-9-]){1,}))?)");
@@ -87,7 +87,7 @@ suite("README", () => {
     const r$ = createDesigner();
     assert.strictEqual(r$.named("value", "A", "B").toString(), "(?<value>AB)");
     assert.strictEqual(r$.named("word", r$.or("cat", "dog")).toString(), "(?<word>cat|dog)");
-    assert.strictEqual(r$.named("user", /[^@]+/, "@", /[a-z]+/).toString(), "(?<user>[^@]+@[a-z]+)");
+    assert.strictEqual(r$.named("user", "[^@]+", "@", "[a-z]+").toString(), "(?<user>[^@]+@[a-z]+)");
   });
 
   test("ref", () => {
@@ -127,7 +127,7 @@ suite("README", () => {
     const r$ = createDesigner();
     assert.strictEqual(r$.or("cat", "dog").toString(), "cat|dog");
     assert.strictEqual(r$.or("A", "B").toString(), "A|B");
-    assert.strictEqual(r$.or(/foo/, "bar", r$.raw("baz")).toString(), "foo|bar|\\x62az");
+    assert.strictEqual(r$.or("foo", "bar", r$.raw("baz")).toString(), "foo|bar|\\x62az");
   });
 
   test("ahead", () => {

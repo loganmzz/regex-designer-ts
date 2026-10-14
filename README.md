@@ -6,6 +6,8 @@ See:
 
 * [`core`](./packages/core/): Common APIs
 * [`js`](./packages/js/): native JavaScript implementation
+* [`re2`](./packages/re2/): RE2 implementation
+* [`test`](./packages/test/): private tests comparing implementation behavior
 
 ## Development
 

@@ -6,7 +6,9 @@
   "type": "module",
   "workspaces": [
     "packages/core",
-    "packages/js"
+    "packages/js",
+    "packages/re2",
+    "packages/test"
   ],
   "engines": {
     "node": ">=24.0.0"
