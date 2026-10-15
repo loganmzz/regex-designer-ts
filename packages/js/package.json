@@ -1,6 +1,6 @@
 {
   "name": "@regex-designer/js",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A small TypeScript library for composing JavaScript regular expressions in a readable, reusable way.",
   "type": "module",
   "license": "MIT",
@@ -20,12 +20,13 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
   "sideEffects": false,
   "dependencies": {
-    "@regex-designer/core": "0.2.0"
+    "@regex-designer/core": "0.2.1"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
