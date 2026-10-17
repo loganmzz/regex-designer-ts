@@ -1,6 +1,6 @@
 {
   "name": "@regex-designer/workspace",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "A small TypeScript library for composing regular expressions in a readable, reusable way.",
   "private": true,
   "type": "module",
@@ -17,7 +17,8 @@
     "build": "npm run build --workspaces",
     "lint": "eslint .",
     "test": "npm run test --workspaces",
-    "check": "npm run check --workspaces"
+    "check": "npm run check --workspaces",
+    "version": "npm version --workspaces --include-workspace-root"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

@@ -1,6 +1,6 @@
 {
   "name": "@regex-designer/test",
-  "version": "0.2.1",
+  "version": "1.0.0",
   "description": "Cross-implementation tests checking that JavaScript and RE2 designers behave identically.",
   "private": true,
   "type": "module",
